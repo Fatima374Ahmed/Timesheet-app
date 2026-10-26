@@ -41,21 +41,44 @@ export default function TimesheetsTable() {
   
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const res: any = await getTimesheets();
-        setData(res);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // useEffect(() => {
+  //   const fetchData = async () => {
+  //     try {
+  //       setLoading(true);
+  //       const res: any = await getTimesheets();
+  //       setData(res);
+  //     } catch (err) {
+  //       console.error(err);
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
 
-    fetchData();
-  }, []);
+  //   fetchData();
+  // }, []);
+
+  const [timesheets, setTimesheets] = useState<any[]>([]);
+  useEffect(() => {
+  const getTimesheets = async () => {
+    try {
+      const response = await fetch('http://localhost:3000/timesheet');
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch timesheets');
+      }
+
+      const data = await response.json();
+
+      console.log('timesheets', data);
+     
+      setData(data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  getTimesheets();
+}, []);
 
   
   const filteredData = useMemo(() => {
@@ -116,15 +139,28 @@ useEffect(() => {
 };
 
 const weekDetail = async (item: any) => {
-
-   navigate(`/weekDetail`, {
+  console.log("CLICKED ITEM:", JSON.stringify(item, null, 2));
+  
+  navigate(`/weekDetail?id=${item._id}`, {
     state: {
       startDate: item.startDate,
       endDate: item.endDate,
-      mode: item.action,
+      mode: item.status,
+      days: item.days,
+      id: item._id
     },
   });
-}
+};
+
+const formatDate = (dateString: string) => {
+  const date = new Date(dateString);
+
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const year = date.getUTCFullYear();
+
+  return `${day}/${month}/${year}`;
+};
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -179,9 +215,9 @@ const weekDetail = async (item: any) => {
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}>
                 <option value="">All Status</option>
-                <option value="COMPLETED">Completed</option>
-                <option value="INCOMPLETE">Incomplete</option>
-                <option value="MISSING">Missing</option>
+                <option value="Completed">Completed</option>
+                <option value="Incomplete">Incomplete</option>
+                <option value="Missing">Missing</option>
             </select>
           </div>
 
@@ -207,20 +243,28 @@ const weekDetail = async (item: any) => {
                 </thead>
         
                   <tbody>
-                  {paginatedData.map((item) => (
+                  {paginatedData.map((item, index) => (
                     <tr
-                      key={item.week}
+                      key={index}
                       className="border-t hover:bg-gray-50 h-[3.375rem]"
                     >
-                      <td className="px-4 py-3 text-left pl-8 bg-[#F9FAFB]">{item.week}</td>
+                      <td className="px-4 py-3 text-left pl-8 bg-[#F9FAFB]">{index+1}</td>
 
                       <td className="px-4 py-3 text-gray-600 text-left">
-                        {item.date}
+                        {formatDate(item.startDate)} - {formatDate(item.endDate)}
                       </td>
 
                       <td className="px-4 py-3 text-center">
                         <span
-                          className={`text-xs font-medium px-2 py-1 rounded-full ${statusStyles[item.status]}`}
+                          className={`text-xs font-medium px-2 py-1 rounded-full ${
+                            item.status === 'Incomplete'
+                              ? 'text-[#723B13] bg-[#FDF6B2]'
+                              : item.status === 'Completed'
+                              ? 'text-[#03543F] bg-[#DEF7EC]'
+                              : item.status === 'Missing'
+                              ? 'text-[#99154B] bg-[#FCE8F3]'
+                              : ''
+                          }`}
                         >
                           {item.status}
                         </span>
@@ -228,7 +272,17 @@ const weekDetail = async (item: any) => {
 
                       <td className="px-4 py-3 text-right pr-8">
                         <button className="text-[#1C64F2] hover:underline text-sm" onClick={() => weekDetail(item)}>
-                          {item.action}
+                          {item.status == 'Incomplete' && (
+                            <span>Update</span>
+                          )}
+
+                          {item.status == 'Completed' && (
+                            <span>View</span>
+                          )}
+
+                          {item.status == 'Missing' && (
+                            <span>Create</span>
+                          )}
                         </button>
                       </td>
                     </tr>
